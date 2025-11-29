@@ -11,26 +11,37 @@ class Input:
 
     def checkForInput(self):
         events = pygame.event.get()
+
+        # If quiz is open → ONLY allow clicking answers
+        if hasattr(self.entity.levelObj, "show_quiz") and self.entity.levelObj.show_quiz:
+            self.checkForMouseInputQuiz(events)
+            return
+
+        # Normal game controls
         self.checkForKeyboardInput()
         self.checkForMouseInput(events)
         self.checkForQuitAndRestartInputEvents(events)
 
-    def checkForKeyboardInput(self):
-        pressedKeys = pygame.key.get_pressed()
-
-        if pressedKeys[K_LEFT] or pressedKeys[K_h] and not pressedKeys[K_RIGHT]:
-            self.entity.traits["goTrait"].direction = -1
-        elif pressedKeys[K_RIGHT] or pressedKeys[K_l] and not pressedKeys[K_LEFT]:
-            self.entity.traits["goTrait"].direction = 1
-        else:
-            self.entity.traits['goTrait'].direction = 0
-
-        isJumping = pressedKeys[K_SPACE] or pressedKeys[K_UP] or pressedKeys[K_k]
-        self.entity.traits['jumpTrait'].jump(isJumping)
-
-        self.entity.traits['goTrait'].boost = pressedKeys[K_LSHIFT]
+    def checkForMouseInputQuiz(self, events):
+        # QUIZ ANSWER HANDLING - Only process quiz answers
+        for event in events:
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                for i, r in enumerate(self.entity.levelObj.option_rects):
+                    if r.collidepoint(pygame.mouse.get_pos()):
+                        # correct answer
+                        if i == self.entity.levelObj.quiz_question["answer"]:
+                            import main
+                            main.current_question += 1
+                            self.entity.levelObj.show_quiz = False
+                            self.entity.levelObj.quiz_timer = 0  # Reset timer for next question
+                            return
+                        # wrong answer
+                        else:
+                            self.entity.restart = True
+                            return
 
     def checkForMouseInput(self, events):
+        # NORMAL GAME MOUSE BEHAVIOR
         mouseX, mouseY = pygame.mouse.get_pos()
         if self.isRightMouseButtonPressed(events):
             self.entity.levelObj.addKoopa(
@@ -46,6 +57,21 @@ class Input:
             self.entity.levelObj.addCoin(
                 mouseX / 32 - self.entity.camera.pos.x, mouseY / 32
             )
+
+    def checkForKeyboardInput(self):
+        pressedKeys = pygame.key.get_pressed()
+
+        if pressedKeys[K_LEFT] or pressedKeys[K_h] and not pressedKeys[K_RIGHT]:
+            self.entity.traits["goTrait"].direction = -1
+        elif pressedKeys[K_RIGHT] or pressedKeys[K_l] and not pressedKeys[K_LEFT]:
+            self.entity.traits["goTrait"].direction = 1
+        else:
+            self.entity.traits['goTrait'].direction = 0
+
+        isJumping = pressedKeys[K_SPACE] or pressedKeys[K_UP] or pressedKeys[K_k]
+        self.entity.traits['jumpTrait'].jump(isJumping)
+
+        self.entity.traits['goTrait'].boost = pressedKeys[K_LSHIFT]
 
     def checkForQuitAndRestartInputEvents(self, events):
         for event in events:

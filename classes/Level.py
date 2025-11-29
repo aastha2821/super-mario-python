@@ -1,4 +1,5 @@
 import json
+from tkinter import font
 import pygame
 
 from classes.Sprites import Sprites
@@ -21,6 +22,13 @@ class Level:
         self.level = None
         self.levelLength = 0
         self.entityList = []
+        self.show_quiz = False
+        self.quiz_question = None
+        self.option_rects = []
+        self.quiz_timer = 0
+        self.quiz_interval = 5 * 60  # 5 seconds at 60 FPS
+        self.quiz_font = pygame.font.Font(None, 28)  # Cache font to avoid recreating every frame
+        self.last_quiz_question = None  # Cache last quiz to avoid re-rendering
 
     def loadLevel(self, levelname):
         with open("./levels/{}.json".format(levelname)) as jsonData:
@@ -78,10 +86,16 @@ class Level:
             )
 
     def updateEntities(self, cam):
+        # Create a copy of the list to avoid modifying while iterating
+        entities_to_remove = []
         for entity in self.entityList:
             entity.update(cam)
             if entity.alive is None:
-                self.entityList.remove(entity)
+                entities_to_remove.append(entity)
+        
+        # Remove dead entities after iteration
+        for entity in entities_to_remove:
+            self.entityList.remove(entity)
 
     def drawLevel(self, camera):
         try:
@@ -97,8 +111,28 @@ class Level:
                             x + camera.pos.x, y, self.screen
                         )
             self.updateEntities(camera)
+            
+            # Update quiz timer
+            if not self.show_quiz:
+                self.quiz_timer += 1
+                if self.quiz_timer >= self.quiz_interval:
+                    # Import main only when needed
+                    try:
+                        import main
+                        if main.current_question < len(main.questions):
+                            self.show_quiz = True
+                            self.quiz_question = main.questions[main.current_question]
+                            self.quiz_timer = 0
+                    except (ImportError, AttributeError):
+                        pass
+            
+            if self.show_quiz and self.quiz_question is not None:
+                self.drawQuiz(self.quiz_question)
+        
+
         except IndexError:
             return
+        
 
     def addCloudSprite(self, x, y):
         try:
@@ -173,6 +207,11 @@ class Level:
             )
         )
 
+
+            
+    
+
+
     def addCoin(self, x, y):
         self.entityList.append(Coin(self.screen, self.sprites.spriteCollection, x, y))
 
@@ -203,3 +242,36 @@ class Level:
         self.entityList.append(
             RedMushroom(self.screen, self.sprites.spriteCollection, x, y, self, self.sound)
         )
+    def drawQuiz(self, quiz):
+        # Only rebuild option_rects if quiz changed
+        if quiz != self.last_quiz_question:
+            self.last_quiz_question = quiz
+            box = pygame.Rect(40, 50, 560, 240)
+            pygame.draw.rect(self.screen, (0, 0, 0), box)
+            pygame.draw.rect(self.screen, (255, 255, 255), box, 3)
+
+            q = self.quiz_font.render(quiz["question"], True, (255, 255, 255))
+            self.screen.blit(q, (55, 65))
+
+            self.option_rects = []
+            for idx, option in enumerate(quiz["options"]):
+                r = pygame.Rect(60, 110 + idx * 40, 520, 30)
+                pygame.draw.rect(self.screen, (60, 60, 60), r)
+                t = self.quiz_font.render(option, True, (255, 255, 255))
+                self.screen.blit(t, (70, 115 + idx * 40))
+                self.option_rects.append(r)
+        else:
+            # If same quiz, just redraw without rebuilding
+            box = pygame.Rect(40, 50, 560, 240)
+            pygame.draw.rect(self.screen, (0, 0, 0), box)
+            pygame.draw.rect(self.screen, (255, 255, 255), box, 3)
+
+            q = self.quiz_font.render(quiz["question"], True, (255, 255, 255))
+            self.screen.blit(q, (55, 65))
+
+            for idx, option in enumerate(quiz["options"]):
+                r = pygame.Rect(60, 110 + idx * 40, 520, 30)
+                pygame.draw.rect(self.screen, (60, 60, 60), r)
+                t = self.quiz_font.render(option, True, (255, 255, 255))
+                self.screen.blit(t, (70, 115 + idx * 40))
+    
