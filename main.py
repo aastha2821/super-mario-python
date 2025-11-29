@@ -36,16 +36,26 @@ def main():
 
     while not mario.restart:
         pygame.display.set_caption("Super Mario running with {:d} FPS".format(int(clock.get_fps())))
-        if mario.pause:
-            mario.pauseObj.update()
-        elif level.show_quiz:
-            # Game paused for quiz
+
+        # ---------------- QUIZ MODE ----------------
+        if level.show_quiz:
             level.drawLevel(mario.camera)
             dashboard.update()
+
+            # Critical fix → allow clicking quiz options
+            for event in pygame.event.get():
+                mario.input.handleQuizClick([event])
+
+        # ---------------- PAUSE MODE ----------------
+        elif mario.pause:
+            mario.pauseObj.update()
+
+        # ---------------- NORMAL GAMEPLAY ----------------
         else:
             level.drawLevel(mario.camera)
             dashboard.update()
             mario.update()
+
         pygame.display.update()
         clock.tick(max_frame_rate)
 
